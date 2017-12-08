@@ -1,0 +1,25 @@
+{
+  "name": "upload_image",
+  "version": "1.0.0",
+  "description": "Upload an image to the server ",
+  "main": "img_upload.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/burak43/Node.js-Upload-Image.git"
+  },
+  "keywords": [
+    "upload_image"
+  ],
+  "author": "Burak Mandira",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/burak43/Node.js-Upload-Image/issues"
+  },
+  "homepage": "https://github.com/burak43/Node.js-Upload-Image#readme",
+  "dependencies": {
+    "express": "^4.16.2"
+  }
+}
