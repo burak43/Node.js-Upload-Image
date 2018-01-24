@@ -4,6 +4,20 @@ const fileType = require('file-type');	// to get MIME type of the stored file
 const fs = require('fs');
 const app = express();
 
+/* 
+ * Authentication is verified automatically by
+ * setting the environment variable GOOGLE_APPLICATION_CREDENTIALS.
+ *
+ * see https://cloud.google.com/docs/authentication/getting-started
+ *
+ */
+
+// import the Google Cloud client library, i.e. Vision API
+const vision = require('@google-cloud/vision');
+
+// create a client that uses Application Default Credentials (ADC)
+const client = new vision.ImageAnnotatorClient();
+
 const port = 3000;
 app.listen(port, "localhost");
 
@@ -13,9 +27,9 @@ const upload = multer({
     limits: {fileSize: 10000000, files: 1},
     fileFilter:  (req, file, callback) => {
     
-        if (!file.originalname.match(/\.(jpg|jpeg)$/)) {
+        if (!file.originalname.match(/\.(jpg|jpeg|png)$/i)) {
 
-            return callback(new Error('Only Images are allowed !'), false)
+            return callback(new Error('Only images are allowed!'), false)
         }
 
         callback(null, true);
@@ -40,6 +54,40 @@ app.post('/images/upload', (req, res) => {
     })
 });
 
+app.post('/detect_landmark', upload, (req,res) => {
+	
+	// perform landmark detection
+	const filename = req.file.filename;
+	console.log( filename);
+	client
+		.landmarkDetection( req.file.path)
+		.then( results => {
+			const landmarks = results[0].landmarkAnnotations;
+
+			console.log('Landmarks:');
+			landmarks.forEach( landmark => {
+
+				console.log(landmark)
+
+				/*
+				console.log( "Desc: " + landmark.description);
+				console.log( "Score: " + landmark.score);
+				landmark.locations.forEach( loc => {
+					console.log( "(Lat, Long): (" + loc.latLng.latitude + ", " + 
+													loc.latLng.longitude + ")" );
+				});
+				*/
+			});
+
+			res.status(200).json( landmarks);
+		})
+		.catch( err => {
+			console.error('ERROR:', err);
+			res.status(400).json({message: err.message});
+		});
+
+});
+
 
 // to show the image, called :imagename, to the client
 app.get('/images/:imagename', (req, res) => {
@@ -62,7 +110,7 @@ app.use((err, req, res, next) => {
 
     if (err.code == 'ENOENT') {
         
-        res.status(404).json({message: 'Image Not Found !'})
+        res.status(404).json({message: 'Image Not Found!'})
 
     } else {
 
