@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');		// an express middleware which simplifies uploading of files
 const fileType = require('file-type');	// to get MIME type of the stored file
 const fs = require('fs');
+const sharp = require('sharp');			// to resize the image 
 const app = express();
 
 /* 
@@ -23,15 +24,15 @@ app.listen(port, "localhost");
 
 // maximum file size: 10MB
 const upload = multer({
-    dest:'images/', 
+    // dest:'images/',
+	storage: multer.memoryStorage(),
     limits: {fileSize: 10000000, files: 1},
     fileFilter:  (req, file, callback) => {
     
         if (!file.originalname.match(/\.(jpg|jpeg|png)$/i)) {
-
             return callback(new Error('Only images are allowed!'), false)
         }
-
+		
         callback(null, true);
     }
 }).single('my_image');	// Accept a single file with the key name 'my_image'. The single file will be stored in req.file.
@@ -57,37 +58,77 @@ app.post('/images/upload', (req, res) => {
 app.post('/detect_landmark', upload, (req,res) => {
 	
 	// perform landmark detection
-	const filename = req.file.filename;
-	console.log( filename);
-	client
-		.landmarkDetection( req.file.path)
-		.then( results => {
-			const landmarks = results[0].landmarkAnnotations;
+	// const filename = req.file.filename;
+	// console.log( filename);
+	console.log( req.file.buffer);
+	
+	/*
+	 * Maximum Still Image Resolutions (back camera)
+	 * 
+	 * iPhone 6/6 Plus: 3264 x 2448 pixels
+	 * 
+	 * iPhone X,
+	 * iPhone 8/8 Plus,
+	 * iPhone 7/7 Plus,
+	 * iPhone SE,
+	 * iPhone 6s/6s Plus: 4032 x 3024 pixels
+	 * 
+	 * From GCP Vision API:
+	 * In practice, a standard size of 640 x 480 pixels works well in most cases; 
+	 * sizes larger than this may not gain much in accuracy, while greatly diminishing throughput.
+	 * When at all possible, pre-process your images to reduce their size to these minimum standards.
+	 */
+	// resize the image before sending it
+	sharp( req.file.buffer)
+		.resize( 640, 480)
+		.withMetadata()
+		.toBuffer()
+		.then( resized_image => {
+			console.log( "Image resized.");
 
-			console.log('Landmarks:');
-			landmarks.forEach( landmark => {
+			// send request to Vision API
+			client
+				.landmarkDetection( resized_image)
+				.then( results => {
+					const landmarks = results[0].landmarkAnnotations;
 
-				console.log(landmark)
+					console.log('Landmarks:');
+					landmarks.forEach( landmark => {
 
-				/*
-				console.log( "Desc: " + landmark.description);
-				console.log( "Score: " + landmark.score);
-				landmark.locations.forEach( loc => {
-					console.log( "(Lat, Long): (" + loc.latLng.latitude + ", " + 
-													loc.latLng.longitude + ")" );
+						console.log(landmark)
+
+						/*
+						console.log( "Desc: " + landmark.description);
+						console.log( "Score: " + landmark.score);
+						landmark.locations.forEach( loc => {
+							console.log( "(Lat, Long): (" + loc.latLng.latitude + ", " + 
+															loc.latLng.longitude + ")" );
+						});
+						*/
+					});
+					res.status(200).json( landmarks);
+				})
+				.catch( err => {
+					console.error('ERROR:', err);
+					res.status(400).json({message: err.message});
 				});
-				*/
-			});
-
-			res.status(200).json( landmarks);
+			return new sharp( resized_image);
+		})
+		.then( resized_image_sharp => {
+			resized_image_sharp
+						.metadata()
+						.then( metadata => {
+							console.log( metadata.format +  ' ' + metadata.width + ' ' + metadata.height);
+						})
+						.catch( err => {
+							console.error('ERROR:', err);
+						});
 		})
 		.catch( err => {
 			console.error('ERROR:', err);
 			res.status(400).json({message: err.message});
 		});
-
 });
-
 
 // to show the image, called :imagename, to the client
 app.get('/images/:imagename', (req, res) => {
@@ -109,14 +150,13 @@ app.get('/images/:imagename', (req, res) => {
 app.use((err, req, res, next) => {
 
     if (err.code == 'ENOENT') {
-        
         res.status(404).json({message: 'Image Not Found!'})
-
     } else {
-
         res.status(500).json({message: err.message}) 
     } 
 });
 
 
 console.log(`App Runs on ${port}`);
+
+

@@ -1,22 +1,35 @@
-// Imports the Google Cloud client library.
-const Storage = require('@google-cloud/storage');
+/* 
+ * Authentication is verified automatically by
+ * setting the environment variable GOOGLE_APPLICATION_CREDENTIALS.
+ *
+ * see https://cloud.google.com/docs/authentication/getting-started
+ *
+ */
 
-// Instantiates a client. If you don't specify credentials when constructing
-// the client, the client library will look for credentials in the
-// environment.
-const storage = Storage();
+// import the Google Cloud client library, i.e. Vision API
+const vision = require('@google-cloud/vision');
 
-// Makes an authenticated API request.
-storage
-  .getBuckets()
-  .then((results) => {
-    const buckets = results[0];
+// create a client that uses Application Default Credentials (ADC)
+const client = new vision.ImageAnnotatorClient();
 
-    console.log('Buckets:');
-    buckets.forEach((bucket) => {
-      console.log(bucket.name);
-    });
-  })
-  .catch((err) => {
-    console.error('ERROR:', err);
-  });
+var response = client.landmarkDetection({ 
+	'image' : {'source': {'image_uri': 'http://www.istanbulite.com/wp-content/uploads/2014/08/1galatatower_small.jpg'}}
+});
+
+console.log( response)
+//response.annotations[0].landmarkAnnotations.forEach( landmark => console.log( landmark));
+
+/*
+// perform landmark detection
+const filename = './images/674f86b220a6c7831c1df0bbf21a8aae';
+client
+	.landmarkDetection(filename)
+	.then( results => {
+		const landmarks = results[0].landmarkAnnotations;
+		console.log('Landmarks:');
+		landmarks.forEach(landmark => console.log(landmark));
+	})
+	.catch( err => {
+		console.error('ERROR:', err);
+	});
+*/
