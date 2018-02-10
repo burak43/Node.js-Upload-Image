@@ -2,6 +2,8 @@ const express = require('express');
 const multer = require('multer');		// an express middleware which simplifies uploading of files
 const fileType = require('file-type');	// to get MIME type of the stored file
 const fs = require('fs');
+const http = require("http")
+const https = require("https");
 const sharp = require('sharp');			// to resize the image 
 const app = express();
 
@@ -16,11 +18,19 @@ const app = express();
 // import the Google Cloud client library, i.e. Vision API
 const vision = require('@google-cloud/vision');
 
-// create a client that uses Application Default Credentials (ADC)
+//: create a client that uses Application Default Credentials (ADC)
 const client = new vision.ImageAnnotatorClient();
 
+// set ssl options and port
+const sslOptions = {
+  key: fs.readFileSync("./burakmandira_me.key"),
+  cert: fs.readFileSync("./ssl-bundle.crt")
+};
+
 const port = 3000;
-app.listen(port, "localhost");
+//http.createServer(app).listen(port, "174.138.6.126");
+https.createServer(sslOptions, app).listen(port, "burakmandira.me");
+//app.listen(port, "174.138.6.126");
 
 // maximum file size: 10MB
 const upload = multer({
@@ -158,5 +168,4 @@ app.use((err, req, res, next) => {
 
 
 console.log(`App Runs on ${port}`);
-
 
